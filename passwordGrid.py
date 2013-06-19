@@ -19,12 +19,12 @@ AllowedSymbols = enum(ALL=1,NOSPECIAL=2);
 lowercase = "abcdefghijklmnopqrstuvwxyz";
 uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 numbers   = "0123456789";
-symbols   = "!@#$%^&*()_+-=[]{};:<>./?\\|";
+symbols   = "!@#$%^&*()_+-=[]{};:<>./?\\";
 
 #Generates the grid, checks neighbors for dupes, prints it out, and finds an optimal password path
-def passwordGrid(size, allowedSymbols):
-    #Checks usable Symbols and builds them
-    allSymbols = lowercase + uppercase + numbers;
+def passwordGrid(size, allowedSymbols = AllowedSymbols.ALL, p = True):
+    #Checks usable Symbols and builds them. Numbers * 2 to increase distribution
+    allSymbols = lowercase + uppercase + (numbers * 2);
     if(allowedSymbols != 2):
         allSymbols += symbols;
     
@@ -33,26 +33,68 @@ def passwordGrid(size, allowedSymbols):
     for i in range(size):
         for j in range(size):
             checkNeighbors(grid, i, j, allSymbols);
+
+    points, path, passw = genPassword(grid);
     
-    printGrid(grid);
-    
-    #Generates the start, goal and PW
-    points = genStartAndGoal(size);
-    print(points);
-    path = AStar(points[0],points[1],grid);
-    print(path);
-    return grid, points, path;
+    if(p):
+        printOutputs(grid, points, passw);
+        
+    return grid, points, passw;
 
 #Prints a pre-genned grid, and finds an optimal password path. Useful for generating a new path with the same grid
-def passwordGridNoGen(grid):
-    printGrid(grid);
+def passwordGridNoGen(grid, p):
+    points, path, passw = genPassword(grid);
+
+    if(p):
+        printOutputs(grid, points, passw);
     
-    #Generates the start, goal and PW
-    points = genStartAndGoal(len(grid));
-    print(points);
+    return grid, points, passw;
+
+#Generates the start, goal and PW
+def genPassword(grid):
+    size = len(grid);
+    points = genStartAndGoal(size);
     path = AStar(points[0],points[1],grid);
-    print(path);
-    return points, path;
+    passw = readablePassword(path);
+
+    return points, path, passw;
+
+def printOutputs(grid, points, passw):
+    printGrid(grid);
+    print("Start: " + str(points[0]));
+    print("End: " + str(points[1]));
+    print("Password: " + passw);
+
+#Runs all test methods
+def test():
+    testAStar();
+    testCSVIO();
+
+#Test Method for AStar, will change if parameters are changed for distance measurements
+def testAStar():
+    print("Testing A* Algorithm");
+    grid = [["a","b","c","d"],
+            ["1","2","3","4"],
+            ["A","B","C","D"],
+            ["!","@","#","$"]];
+    expectedPath = ["a","2","C","$"];
+    path = AStar((0,0),(3,3),grid);
+    print("Generated path: " + str(path));
+    assert path == expectedPath;
+    print("A* Test Succeeded");
+
+#Test Method for CSV input and output
+def testCSVIO():
+    print("Testing CSV I/O");
+    grid = generateGrid(5, lowercase);
+    path = "C:\\";
+    path = outputToCSV(grid, path);
+    grid2 = inputFromCSV(path);
+    if(debug):
+        print(grid);
+        print(grid2);
+    assert grid == grid2
+    print("CSV Test Succeeded");
 
 #Generates a random square grid of allSymbols
 def generateGrid(size, allSymbols):
@@ -86,22 +128,16 @@ def checkNeighbors(grid, x, y, allSymbols):
 
 #Prints the grid into human-readable format
 def printGrid(grid):
+    topRow = "xy| ";
     for i in range(len(grid)):
-        y = "| ";
+        y = str(i) + " | ";
         for j in range(len(grid)):
+            if(i == 0):
+                topRow += str(j) + " | ";
             y += ("" if j == 0 else " ") + grid[i][j] + " |";
+        if(i == 0):
+            print(topRow);
         print(y);
-
-#Test Method for AStar, will change if parameters are changed for distance measurements
-def testAStar():
-    grid = [["a","b","c","d"],
-            ["1","2","3","4"],
-            ["A","B","C","D"],
-            ["!","@","#","$"]];
-    expectedPath = ["a","2","B","#","$"];
-    path = AStar((0,0),(3,3),grid);
-    assert path == expectedPath;
-    print("Test Succeeded, Generated path: " + str(path));
 
 #A* Algorithm to search grid for an optimal path between start and goal, generates a password
 def AStar(start, goal, grid):
@@ -190,7 +226,7 @@ def dist_between(node1, node2, came_from, grid, complexity):
     #increase cost:
     if(len(came_from) > len(grid)):
         #If path gets too long
-        cost += 1;
+        cost += 3;
     if(len(came_from) < len(grid)):
         #if path is too short
         cost += 2;
@@ -201,19 +237,19 @@ def dist_between(node1, node2, came_from, grid, complexity):
 
     #decrease cost:
     #if the complexity of the pw increases between node1 and node2, reduce cost
-    fC = 2;
-    lC = 1;
+    fC = 5;
+    lC = 2;
     if(grid[node2[0]][node2[1]] in lowercase):
-        cost -= fC if complexity[0] == 1 else lC
+        cost -= fC if complexity[0] == 0 else lC
         complexity[0] += 1;
     elif(grid[node2[0]][node2[1]] in uppercase):
-        cost -= fC if complexity[1] == 1 else lC
+        cost -= fC if complexity[1] == 0 else lC
         complexity[1] += 1;
     elif(grid[node2[0]][node2[1]] in numbers):
-        cost -= fC if complexity[2] == 1 else lC
+        cost -= fC if complexity[2] == 0 else lC
         complexity[2] += 1;
     elif(grid[node2[0]][node2[1]] in symbols):
-        cost -= fC if complexity[3] == 1 else lC
+        cost -= fC if complexity[3] == 0 else lC
         complexity[3] += 1;
 
     return cost;
@@ -225,6 +261,12 @@ def reconstruct_path(came_from, current, grid, passw):
         current = came_from[current];
     passw.append(grid[current[0]][current[1]]);
     passw.reverse();
+    return passw;
+
+def readablePassword(passwordArray):
+    passw = "";
+    for letter in passwordArray:
+        passw += letter;
     return passw;
 
 #pythagorean theorem to find distance between two nodes
@@ -267,3 +309,30 @@ def genSidePoint(side, size):
         x = random.randint(0, size - 1);
         y = size - 1;
     return (x, y);
+
+def outputToCSV(grid, filePath):
+    fileName = "PasswordGrid.csv";
+    with open(filePath + fileName, 'w') as file:
+        for i in range(len(grid)):
+            line = "";
+            for j in range(len(grid)):
+                line += grid[i][j] + ",";
+            line = line.rstrip(',');
+            line += "\n";
+            file.write(line);
+        file.flush();
+        file.close();
+    return filePath + fileName;
+
+def inputFromCSV(filePath):
+    grid = [];
+    with open(filePath, 'r') as file:
+        while True:
+            line = file.readline();
+            if(line == ''):
+                break;
+            line = line.replace("\n","");
+            array = line.split(',');
+            grid.append(array);
+        file.close();
+    return grid;
