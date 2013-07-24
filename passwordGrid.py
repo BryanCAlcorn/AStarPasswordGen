@@ -7,6 +7,7 @@
 ####################################################################################################
 import random;
 import math;
+import os;
 
 debug = False;
 
@@ -25,10 +26,10 @@ symbols   = "!@#$%^&*()_+-=[]{};:<>./?\\";
 def passwordGrid(size, allowedSymbols = AllowedSymbols.ALL, p = True):
     #Checks usable Symbols and builds them. Numbers * 2 to increase distribution
     allSymbols = lowercase + uppercase + (numbers * 2);
-    if(allowedSymbols != 2):
+    if(allowedSymbols == 1):
         allSymbols += symbols;
     
-    #Generates the grid and checks neighbors
+    #Generates the grid and checks neighbors for duplicates
     grid = generateGrid(size, allSymbols);
     for i in range(size):
         for j in range(size):
@@ -42,7 +43,7 @@ def passwordGrid(size, allowedSymbols = AllowedSymbols.ALL, p = True):
     return grid, points, passw;
 
 #Prints a pre-genned grid, and finds an optimal password path. Useful for generating a new path with the same grid
-def passwordGridNoGen(grid, p):
+def passwordGridNoGen(grid, p = True):
     points, path, passw = genPassword(grid);
 
     if(p):
@@ -90,6 +91,7 @@ def testCSVIO():
     path = "C:\\";
     path = outputToCSV(grid, path);
     grid2 = inputFromCSV(path);
+    os.remove(path);
     if(debug):
         print(grid);
         print(grid2);
@@ -296,17 +298,18 @@ def genStartAndGoal(size):
 
 #Gets a point on the side of the grid
 def genSidePoint(side, size):
+    randCoord = random.randint(0, size - 1);
     if(side == 1):
         x = 0;
-        y = random.randint(0, size - 1);
+        y = randCoord;
     elif(side == 2):
         x = size - 1;
-        y = random.randint(0, size - 1);
+        y = randCoord;
     elif(side == 3):
-        x = random.randint(0, size - 1);
+        x = randCoord;
         y = 0;
     elif(side == 4):
-        x = random.randint(0, size - 1);
+        x = randCoord;
         y = size - 1;
     return (x, y);
 
